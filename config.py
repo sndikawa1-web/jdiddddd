@@ -4,16 +4,16 @@
 import os
 
 # ============================================
-# TELEGRAM BOT TOKENİ (BURAYI DEĞİŞTİR!)
+# TELEGRAM BOT TOKENİ (Railway'den alınacak)
 # ============================================
-# @BotFather'dan aldığın token'ı aşağıya yapıştır
-BOT_TOKEN = "7234567890:AAGkLx8Fm7xY9ZqW2rT3yU4i"  # <-- BUNU DEĞİŞTİR!
+# Railway'de VARIABLES kısmına BOT_TOKEN ekleyeceksin
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 # ============================================
-# GRUP ID (BURAYI DEĞİŞTİR!)
+# GRUP ID (Railway'den alınacak)
 # ============================================
-# Botun çalışacağı grubun ID'sini yaz
-ALLOWED_GROUP_ID = -1001234567890  # <-- BUNU DEĞİŞTİR!
+# Railway'de VARIABLES kısmına GROUP_ID ekleyeceksin
+ALLOWED_GROUP_ID = int(os.environ.get("GROUP_ID", 0))
 
 # ============================================
 # ZAMAN AYARLARI
@@ -24,5 +24,4 @@ IRAQ_TIMEZONE = "Asia/Baghdad"  # Irak saati
 # RAILWAY'DE VERİTABANI BAĞLANTISI
 # ============================================
 # Railway otomatik olarak DATABASE_URL değişkenini ekler
-# Aşağıdaki satırı değiştirme!
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///bot_database.db")
