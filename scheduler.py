@@ -1,5 +1,4 @@
-# scheduler.py - Zamanlayıcı
-# Bu dosya botun her saat başı ve her gün belirli saatte çalışmasını sağlar
+# scheduler.py - Zamanlayıcı (DÜZELTİLMİŞ)
 
 import schedule
 import time
@@ -25,12 +24,12 @@ def run_scheduler(check_func, report_func, group_id):
         if now.hour == 12 and now.minute == 0:
             report_func()
     
-    # Her dakika kontrol et (12:00'yi yakalamak için)
+    # Her dakika kontrol et
     schedule.every(1).minutes.do(daily_report_with_time)
     
-    print(f"⏰ Zamanlayıcı başlatıldı - Irak saati: {get_iraq_time().strftime('%Y-%m-%d %H:%M')}")
-    print("   • Her saat başı: 24 saat konuşmayanları kontrol")
-    print("   • Her gün 12:00: En aktif 5 kişi raporu")
+    print(f"Zamanlayici baslatildi - Irak saati: {get_iraq_time().strftime('%Y-%m-%d %H:%M')}")
+    print("   Her saat basi: 24 saat konusmayanlari kontrol")
+    print("   Her gun 12:00: En aktif 5 kisi raporu")
     
     while True:
         schedule.run_pending()
