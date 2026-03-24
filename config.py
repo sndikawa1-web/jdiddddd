@@ -1,27 +1,21 @@
-# config.py - Bot ayarları
-# Bu dosyada botun tüm ayarları bulunur
+# config.py - Bot ayarlari (DÜZELTİLMİŞ)
 
 import os
 
-# ============================================
-# TELEGRAM BOT TOKENİ (Railway'den alınacak)
-# ============================================
-# Railway'de VARIABLES kısmına BOT_TOKEN ekleyeceksin
+# Railway'den alinacak degerler
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
+GROUP_ID = os.environ.get("GROUP_ID")
 
-# ============================================
-# GRUP ID (Railway'den alınacak)
-# ============================================
-# Railway'de VARIABLES kısmına GROUP_ID ekleyeceksin
-ALLOWED_GROUP_ID = int(os.environ.get("GROUP_ID", 0))
+# Grup ID'yi integer'a cevir
+if GROUP_ID:
+    ALLOWED_GROUP_ID = int(GROUP_ID)
+else:
+    ALLOWED_GROUP_ID = 0
 
-# ============================================
-# ZAMAN AYARLARI
-# ============================================
-IRAQ_TIMEZONE = "Asia/Baghdad"  # Irak saati
+# Zaman ayari
+IRAQ_TIMEZONE = "Asia/Baghdad"
 
-# ============================================
-# RAILWAY'DE VERİTABANI BAĞLANTISI
-# ============================================
-# Railway otomatik olarak DATABASE_URL değişkenini ekler
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///bot_database.db")
+# Veritabani
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+print(f"Config yuklendi - Grup ID: {ALLOWED_GROUP_ID}")
