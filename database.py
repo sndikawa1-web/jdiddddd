@@ -97,6 +97,27 @@ class Database:
             print(f"Hata: {e}")
             return False
     
+    def add_user_manual(self, user_id, username, first_name, last_name=None):
+        """Manuel olarak kullanıcı ekle - hiç mesaj göndermemiş olarak"""
+        try:
+            if self.is_postgres:
+                self.cursor.execute("""
+                    INSERT INTO users (user_id, username, first_name, last_name, last_message_date, total_messages)
+                    VALUES (%s, %s, %s, %s, NULL, 0)
+                    ON CONFLICT(user_id) DO NOTHING
+                """, (user_id, username, first_name, last_name))
+            else:
+                self.cursor.execute("""
+                    INSERT INTO users (user_id, username, first_name, last_name, last_message_date, total_messages)
+                    VALUES (?, ?, ?, ?, NULL, 0)
+                    ON CONFLICT(user_id) DO NOTHING
+                """, (user_id, username, first_name, last_name))
+            self.conn.commit()
+            return True
+        except Exception as e:
+            print(f"Manuel ekleme hatasi: {e}")
+            return False
+    
     def remove_user(self, user_id):
         try:
             if self.is_postgres:
@@ -254,27 +275,6 @@ class Database:
                 FROM users WHERE user_id = ?
             """, (user_id,))
         return self.cursor.fetchone()
-    
-    def add_user_manual(self, user_id, username, first_name, last_name=None):
-        """Manuel olarak kullanıcı ekle - hiç mesaj göndermemiş olarak"""
-        try:
-            if self.is_postgres:
-                self.cursor.execute("""
-                    INSERT INTO users (user_id, username, first_name, last_name, last_message_date, total_messages)
-                    VALUES (%s, %s, %s, %s, NULL, 0)
-                    ON CONFLICT(user_id) DO NOTHING
-                """, (user_id, username, first_name, last_name))
-            else:
-                self.cursor.execute("""
-                    INSERT INTO users (user_id, username, first_name, last_name, last_message_date, total_messages)
-                    VALUES (?, ?, ?, ?, NULL, 0)
-                    ON CONFLICT(user_id) DO NOTHING
-                """, (user_id, username, first_name, last_name))
-            self.conn.commit()
-            return True
-        except Exception as e:
-            print(f"Manuel ekleme hatasi: {e}")
-            return False
     
     def close(self):
         self.conn.close()
