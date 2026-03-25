@@ -1,4 +1,4 @@
-# database.py - Veritabanı işlemleri (DÜZELTİLMİŞ)
+# database.py - Veritabanı işlemleri
 # Bu dosya tüm verileri kaydeder ve okur
 
 import sqlite3
@@ -143,12 +143,13 @@ class Database:
         return self.cursor.fetchall()
     
     def get_inactive_users_24h(self):
-        """24 saat mesaj göndermeyen kullanıcıları bul"""
+        """24 saat mesaj göndermeyen veya hiç mesaj göndermemiş kullanıcıları bul"""
         cutoff = datetime.datetime.now() - datetime.timedelta(hours=24)
         self.cursor.execute("""
             SELECT user_id, username, first_name, last_message_date, negative_points, last_notified_24h
             FROM users 
-            WHERE last_message_date < ?
+            WHERE last_message_date IS NULL 
+               OR last_message_date < ?
         """, (cutoff,))
         return self.cursor.fetchall()
     
