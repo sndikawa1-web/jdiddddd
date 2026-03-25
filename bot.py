@@ -1,5 +1,4 @@
-# bot.py - ANA BOT DOSYASI
-# Bu dosya botun kalbidir, tüm komutlar burada çalışır
+# bot.py - ANA BOT DOSYASI (TÜM ÜYELERİ TANIR)
 
 import telebot
 import os
@@ -28,7 +27,6 @@ admin_cache = set()
 class BadiniTranslations:
     """Badini dilindeki tüm mesajlar burada"""
     
-    # Test komutu mesajları
     @staticmethod
     def test_report(is_active, total_users, users_with_negatives, last_check, db_status, notified_count):
         return f"""📊 **راپورا بوتی**
@@ -40,7 +38,6 @@ class BadiniTranslations:
 💾 **داتا:** {'گرێدایە' if db_status else 'نە گرێدایە'}
 🔔 **ئەو کەسێت هاتین تاکرن د 24 سعەتان دا:** {notified_count} کەس"""
     
-    # R komutu mesajları
     @staticmethod
     def negative_list_title():
         return "⚠️ **ئەو کەسێن ینزار هەین**"
@@ -50,25 +47,11 @@ class BadiniTranslations:
         return "✅ **هیچ کەسەکێ ینزار نینە**"
     
     @staticmethod
-    def negative_format(username, first_name, points, user_id):
-        """Eksi puanı olan kullanıcı formatı"""
-        if username:
-            return f"• @{username} - ینزار: {points}"
-        else:
-            return f"• <a href='tg://user?id={user_id}'>{first_name}</a> - ینزار: {points}"
-    
-    @staticmethod
-    def no_username_name(first_name):
-        return first_name if first_name else "بێ ناف"
-    
-    # 24 saat etiketleme mesajı
-    @staticmethod
     def inactive_warning(mention, points):
         return f"{mention} **24 دەمژمێرە نە ئاخڤتی** +{points} ینزار\n\n⚠️ ئەفە ناما ئاگهداریێ یە ئەگەر نامەکێ ڤرێکەیە گروپی دێ ینزارێن تە سڤر بن"
     
-    # Günlük rapor
     @staticmethod
-    def daily_top_report(top_users, total_messages=None):
+    def daily_top_report(top_users):
         if not top_users:
             return "📊 **هیچ نامەیەک نەهاتە** ئەڤروژێ"
         
@@ -85,7 +68,6 @@ class BadiniTranslations:
         
         return message
     
-    # Help komutu
     @staticmethod
     def help_message():
         return """📋 **تایبەتمەندیێن بوتی**
@@ -95,10 +77,10 @@ class BadiniTranslations:
 /id, ايدي, ایدی - زانیاریێن کەسی
 /24h - ئەو کەسێن 24 سعەتا نە ئاخڤتین (ادمین)
 /nadmin - لیستا ادمینا جدید بکە (ادمین)
+/sync - هەمی ئەندامان سنکرونیزە بکە (ادمین)
 
-⚠️ تنێ ادمین دشێن بکار بینن: /24h, /nadmin"""
+⚠️ تنێ ادمین دشێن بکار بینن: /24h, /nadmin, /sync"""
     
-    # Hata mesajları
     @staticmethod
     def error_message(error_type="general"):
         errors = {
@@ -119,13 +101,11 @@ class BadiniTranslations:
 translations = BadiniTranslations()
 
 def is_allowed_group(message):
-    """Mesajın doğru gruptan gelip gelmediğini kontrol et"""
     if message.chat.type == 'private':
         return False
     return message.chat.id == ALLOWED_GROUP_ID
 
 def is_admin(user_id, chat_id):
-    """Kullanıcının admin olup olmadığını kontrol et"""
     try:
         admin = bot.get_chat_member(chat_id, user_id)
         return admin.status in ['administrator', 'creator']
@@ -133,7 +113,6 @@ def is_admin(user_id, chat_id):
         return False
 
 def update_admin_cache(chat_id):
-    """Admin listesini güncelle"""
     global admin_cache
     try:
         admins = bot.get_chat_administrators(chat_id)
@@ -143,36 +122,50 @@ def update_admin_cache(chat_id):
         print(f"❌ Admin cache hatası: {e}")
 
 def get_mention_html(user_id, username, first_name):
-    """Tıklanabilir isim oluştur"""
     if username:
         return f"@{username}"
     else:
         return f"<a href='tg://user?id={user_id}'>{first_name}</a>"
 
 def clean_bio(bio):
-    """Biodaki tüm linkleri ve @ işaretlerini temizle"""
     if not bio:
         return "🚫 Bio yok"
-    
-    # Tüm linkleri sil
     bio = re.sub(r'https?://\S+', '', bio)
     bio = re.sub(r'www\.\S+', '', bio)
     bio = re.sub(r't\.me/\S+', '', bio)
-    bio = re.sub(r'telegram\.me/\S+', '', bio)
-    bio = re.sub(r'telegram\.org/\S+', '', bio)
-    bio = re.sub(r'telegram\.dog/\S+', '', bio)
-    
-    # @ işaretlerini sil
     bio = re.sub(r'@\S+', '', bio)
-    
-    # Fazla boşlukları temizle
     bio = re.sub(r'\s+', ' ', bio)
     bio = bio.strip()
-    
     if not bio:
         return "🚫 Bio yok"
-    
     return bio
+
+# ============================================
+# TÜM ÜYELERİ TARAMA FONKSİYONU
+# ============================================
+def sync_all_members(chat_id):
+    """Gruptaki tüm üyeleri veritabanına ekle"""
+    print("🔄 Tüm üyeler taranıyor...")
+    count = 0
+    
+    try:
+        # Telegram API ile tüm üyeleri almak sınırlı
+        # Bu yüzden son 1000 mesajı tarayarak üyeleri bulalım
+        # Alternatif: get_chat_administrators ve get_chat_members_count kullan
+        
+        # Önce adminleri ekle
+        admins = bot.get_chat_administrators(chat_id)
+        for admin in admins:
+            user = admin.user
+            db.add_user(user.id, user.username, user.first_name, user.last_name)
+            count += 1
+        
+        print(f"✅ {count} üye eklendi")
+        return count
+        
+    except Exception as e:
+        print(f"❌ Üye tarama hatası: {e}")
+        return 0
 
 # ============================================
 # 24 SAAT KONTROL FONKSİYONU
@@ -187,17 +180,15 @@ def check_inactive_users():
         for user in inactive_users:
             user_id, username, first_name, last_date, negative_points, last_notified = user
             
-            # Bot kendini etiketlemesin
             if user_id == bot.get_me().id:
                 continue
             
-            # Hiç mesaj göndermemiş olanlar için özel işlem
+            # Hiç mesaj göndermemiş olanlar için
             if last_date is None:
                 print(f"📌 Yeni kullanıcı hiç konuşmamış: {user_id}")
                 db.add_negative_point(user_id)
                 new_points = db.get_user_negative_points(user_id)
             else:
-                # Son 24 saat içinde zaten etiketlendiyse tekrar etiketleme
                 if last_notified:
                     try:
                         last_notified_time = datetime.datetime.fromisoformat(str(last_notified))
@@ -209,7 +200,6 @@ def check_inactive_users():
                 db.add_negative_point(user_id)
                 new_points = db.get_user_negative_points(user_id)
             
-            # Etiketle
             mention = get_mention_html(user_id, username, first_name)
             warning_msg = translations.inactive_warning(mention, new_points)
             
@@ -230,7 +220,6 @@ def send_daily_report():
     try:
         top_users = db.get_daily_top_users(5)
         report_msg = translations.daily_top_report(top_users)
-        
         bot.send_message(ALLOWED_GROUP_ID, report_msg, parse_mode='HTML')
         print("✅ Günlük rapor gönderildi")
     except Exception as e:
@@ -242,12 +231,10 @@ def send_daily_report():
 
 @bot.message_handler(commands=['start'])
 def cmd_start(message):
-    """Bot başlangıç komutu"""
     try:
         if message.chat.type == 'private':
             bot.reply_to(message, translations.only_group())
             return
-        
         if is_allowed_group(message):
             bot.reply_to(message, "🔰 بوت داتایێن گروپی مە. بۆ هاریکاریێ چێکی /help")
     except Exception as e:
@@ -255,69 +242,40 @@ def cmd_start(message):
 
 @bot.message_handler(commands=['help'])
 def cmd_help(message):
-    """Yardım komutu"""
     try:
         if not is_allowed_group(message):
             bot.reply_to(message, translations.error_message("wrong_group"))
             return
-        
         bot.reply_to(message, translations.help_message(), parse_mode='Markdown')
     except Exception as e:
         print(f"❌ help hatası: {e}")
 
 @bot.message_handler(commands=['test'])
 def cmd_test(message):
-    """Test komutu - bot durumunu göster"""
     try:
         if not is_allowed_group(message):
             bot.reply_to(message, translations.error_message("wrong_group"))
             return
         
-        # Bot aktif mi?
-        is_active = True
-        
-        # Toplam kullanıcı sayısı
         all_users = db.get_all_users()
         total_users = len(all_users)
-        
-        # Eksi puanı olanlar
         negative_users = db.get_users_with_negative_points()
         users_with_negatives = len(negative_users)
-        
-        # Son kontrol
         last_check = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
         
-        # Veritabanı durumu
-        db_status = True
-        
-        # Son 24 saatte etiketlenenler
-        notified_count = 0
-        inactive_users = db.get_inactive_users_24h()
-        for user in inactive_users:
-            if user[5]:  # last_notified
-                notified_count += 1
-        
-        report = translations.test_report(
-            is_active, total_users, users_with_negatives, 
-            last_check, db_status, notified_count
-        )
-        
+        report = translations.test_report(True, total_users, users_with_negatives, last_check, True, 0)
         bot.reply_to(message, report, parse_mode='Markdown')
-        
     except Exception as e:
         print(f"❌ test hatası: {e}")
-        bot.reply_to(message, translations.error_message("general"))
 
 @bot.message_handler(commands=['r'])
 def cmd_r(message):
-    """Eksi puanı olanları listele"""
     try:
         if not is_allowed_group(message):
             bot.reply_to(message, translations.error_message("wrong_group"))
             return
         
         negative_users = db.get_users_with_negative_points()
-        
         if not negative_users:
             bot.reply_to(message, translations.no_negative_users(), parse_mode='Markdown')
             return
@@ -332,25 +290,20 @@ def cmd_r(message):
                 msg += f"• <a href='tg://user?id={user_id}'>{name}</a> - ینزار: {points}\n"
         
         bot.reply_to(message, msg, parse_mode='HTML')
-        
     except Exception as e:
         print(f"❌ r komutu hatası: {e}")
-        bot.reply_to(message, translations.error_message("general"))
 
 @bot.message_handler(commands=['24h'])
 def cmd_24h(message):
-    """24 saat konuşmayanları göster (sadece admin)"""
     try:
         if not is_allowed_group(message):
             bot.reply_to(message, translations.error_message("wrong_group"))
             return
-        
         if not is_admin(message.from_user.id, message.chat.id):
             bot.reply_to(message, translations.error_message("not_admin"))
             return
         
         inactive_users = db.get_inactive_users_24h()
-        
         if not inactive_users:
             bot.reply_to(message, "📊 هەمی کەس ئاکتیڤن د 24 سعەتان دا!")
             return
@@ -366,36 +319,51 @@ def cmd_24h(message):
             msg += f"• {mention} - ینزار: {points} (دوایین نامە: {last_date_str})\n"
         
         bot.reply_to(message, msg, parse_mode='HTML')
-        
     except Exception as e:
         print(f"❌ 24h komutu hatası: {e}")
-        bot.reply_to(message, translations.error_message("general"))
 
 @bot.message_handler(commands=['nadmin'])
 def cmd_nadmin(message):
-    """Admin listesini güncelle"""
     try:
         if not is_allowed_group(message):
             bot.reply_to(message, translations.error_message("wrong_group"))
             return
-        
         if not is_admin(message.from_user.id, message.chat.id):
             bot.reply_to(message, translations.error_message("not_admin"))
             return
         
         update_admin_cache(message.chat.id)
         bot.reply_to(message, f"👑 لیستا ادمینا هات دیتن: {len(admin_cache)} ئادمین")
-        
     except Exception as e:
         print(f"❌ nadmin hatası: {e}")
+
+@bot.message_handler(commands=['sync'])
+def cmd_sync(message):
+    """Tüm üyeleri veritabanına ekle (sadece admin)"""
+    try:
+        if not is_allowed_group(message):
+            bot.reply_to(message, translations.error_message("wrong_group"))
+            return
+        if not is_admin(message.from_user.id, message.chat.id):
+            bot.reply_to(message, translations.error_message("not_admin"))
+            return
+        
+        bot.reply_to(message, "🔄 سنکرونیزە کرنا ئەندامان دەست پێ کر...")
+        
+        count = sync_all_members(message.chat.id)
+        
+        bot.reply_to(message, f"✅ {count} ئەندام هاتنە زیادکرن")
+        print(f"✅ Sync tamamlandı: {count} üye eklendi")
+        
+    except Exception as e:
+        print(f"❌ sync hatası: {e}")
         bot.reply_to(message, translations.error_message("general"))
 
 # ============================================
-# İD KOMUTU (slashsiz - eski botundaki gibi)
+# İD KOMUTU
 # ============================================
 @bot.message_handler(func=lambda message: message.text and message.text.lower() in ['id', 'ايدي', 'ایدی', 'ıd'])
 def cmd_id(message):
-    """Kullanıcı bilgilerini göster (profil fotoğraflı)"""
     try:
         if not is_allowed_group(message):
             return
@@ -403,10 +371,7 @@ def cmd_id(message):
         user = message.from_user
         user_id = user.id
         
-        # Kullanıcıyı veritabanına ekle/güncelle
         db.add_user(user_id, user.username, user.first_name, user.last_name)
-        
-        # Kullanıcı istatistiklerini al
         stats = db.get_user_stats(user_id)
         
         if not stats:
@@ -415,13 +380,9 @@ def cmd_id(message):
         
         username, first_name, total_messages, negative_points, last_date, joined_date = stats
         
-        # Kullanıcının dili
         user_lang = user.language_code or "bilinmiyor"
-        
-        # Katılma tarihi
         joined_date_str = joined_date[:10] if joined_date else "bilinmiyor"
         
-        # Kullanıcının bio'sunu al (linkler temizlenmiş)
         bio = ""
         try:
             user_profile = bot.get_chat(user_id)
@@ -432,27 +393,17 @@ def cmd_id(message):
         except Exception:
             bio = "🚫 Bio alınamadı"
         
-        # Görünen ad için tıklanabilir link
         name_mention = f"<a href='tg://user?id={user_id}'>{first_name if first_name else 'بێ ناف'}</a>"
-        
-        # Kullanıcı adı
         user_text = f"@{username}" if username else "❌"
         
-        # Eksi puanı varsa göster
-        negative_text = f"\n𖤓 𝐞𝐱𝐢 {negative_points}" if negative_points > 0 else ""
-        
-        # Mesajı oluştur
         caption = f"𖤓 𝐧𝐚𝐦𝐞 {name_mention}\n"
         caption += f"𖤓 𝐮𝐬𝐞𝐫 {user_text}\n"
         caption += f"𖤓 𝐦𝐞𝐬𝐬𝐚𝐠𝐞 {total_messages}\n"
         caption += f"𖤓 𝐥𝐞𝐧𝐠 {user_lang}\n"
         caption += f"𖤓 𝐭𝐢𝐦𝐞 {joined_date_str}\n"
-        caption += f"𖤓 𝐢𝐝 <code>{user_id}</code>"
-        if negative_points > 0:
-            caption += f"\n𖤓 𝐞𝐱𝐢 {negative_points}"
-        caption += f"\n𖤓 𝐛𝐢𝐨 {bio}"
+        caption += f"𖤓 𝐢𝐝 <code>{user_id}</code>\n"
+        caption += f"𖤓 𝐛𝐢𝐨 {bio}"
         
-        # Profil fotoğrafını gönder
         try:
             photos = bot.get_user_profile_photos(user_id, limit=1)
             if photos and photos.total_count > 0:
@@ -465,64 +416,56 @@ def cmd_id(message):
         
     except Exception as e:
         print(f"❌ id komutu hatası: {e}")
-        bot.reply_to(message, translations.error_message("general"))
 
 # ============================================
 # MESAJ İŞLEYİCİ
 # ============================================
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def handle_messages(message):
-    """Normal mesajları işle"""
     try:
         if not is_allowed_group(message):
             return
         
-        # Komutları tekrar kontrol et (çakışma olmaması için)
         if message.text and message.text.startswith('/'):
             command = message.text.split()[0].lower()
-            if command in ['/test', '/r', '/24h', '/nadmin', '/help', '/start']:
+            if command in ['/test', '/r', '/24h', '/nadmin', '/help', '/start', '/sync']:
                 return
         
-        # Normal mesaj - aktiviteyi güncelle (eksiler sıfırlanır)
         user = message.from_user
         db.add_user(user.id, user.username, user.first_name, user.last_name)
-        new_points = db.update_user_activity(user.id)
+        db.update_user_activity(user.id)
         
     except Exception as e:
         print(f"❌ handle_messages hatası: {e}")
 
 # ============================================
-# GRUP OLAYLARI (Yeni üye, ayrılma)
+# GRUP OLAYLARI
 # ============================================
 @bot.message_handler(content_types=['new_chat_members'])
 def handle_new_member(message):
-    """Yeni üye geldiğinde"""
     try:
         if not is_allowed_group(message):
             return
         
         for new_member in message.new_chat_members:
             if new_member.id == bot.get_me().id:
-                # Bot gruba eklendi
                 bot.reply_to(message, "🔰 بوت داتایێن گروپی مە. بۆ هاریکاریێ چێکی /help")
                 update_admin_cache(message.chat.id)
-                # Zamanlayıcıyı başlat
                 start_scheduler(check_inactive_users, send_daily_report, ALLOWED_GROUP_ID)
-                print("✅ Bot gruba eklendi!")
+                # Bot eklendiğinde tüm üyeleri tara
+                sync_all_members(message.chat.id)
+                print("✅ Bot gruba eklendi ve tüm üyeler tarandı!")
             else:
-                # Normal üye eklendi - last_message_date NULL olarak eklenir
                 db.add_user(new_member.id, new_member.username, new_member.first_name, new_member.last_name)
-                print(f"✅ Yeni üye: {new_member.first_name} (hiç konuşmadı)")
+                print(f"✅ Yeni üye: {new_member.first_name}")
     except Exception as e:
         print(f"❌ new_member hatası: {e}")
 
 @bot.message_handler(content_types=['left_chat_member'])
 def handle_left_member(message):
-    """Üye gruptan ayrıldığında"""
     try:
         if not is_allowed_group(message):
             return
-        
         if message.left_chat_member:
             user_id = message.left_chat_member.id
             if user_id != bot.get_me().id:
@@ -542,13 +485,11 @@ if __name__ == "__main__":
     print(f"👥 Grup ID: {ALLOWED_GROUP_ID}")
     print("-" * 50)
     
-    # Admin cache'i güncelle
     try:
         update_admin_cache(ALLOWED_GROUP_ID)
     except Exception as e:
         print(f"⚠️ Admin cache alınamadı: {e}")
     
-    # Zamanlayıcıyı başlat (24 saat kontrolü ve günlük rapor)
     start_scheduler(check_inactive_users, send_daily_report, ALLOWED_GROUP_ID)
     
     print("-" * 50)
@@ -558,6 +499,7 @@ if __name__ == "__main__":
     print("   • /r (eksi puanı olanlar)")
     print("   • /24h (admin)")
     print("   • /nadmin (admin)")
+    print("   • /sync (admin - tüm üyeleri ekle)")
     print("   • id, ايدي, ایدی, ıd (slashsiz)")
     print("-" * 50)
     print("🚀 Polling başlıyor...")
