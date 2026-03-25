@@ -128,47 +128,49 @@ def clean_bio(bio):
     return bio
 
 def sync_all_members(chat_id):
-    """Gruptaki tüm üyeleri mesaj geçmişinden tarayarak ekle"""
+    """Gruptaki TÜM üyeleri Telegram API ile al"""
     print("🔄 Tüm üyeler taranıyor...")
     count = 0
     users_found = set()
     
     try:
-        # Adminleri ekle
+        # Önce adminleri al
         admins = bot.get_chat_administrators(chat_id)
         for admin in admins:
             user = admin.user
             if not user.is_bot:
-                db.add_user(user.id, user.username, user.first_name, user.last_name)
+                db.add_user_manual(user.id, user.username, user.first_name, user.last_name)
                 users_found.add(user.id)
                 count += 1
                 print(f"✅ Admin eklendi: {user.first_name}")
         
-        # Son 500 mesajı tara
+        # Grubun toplam üye sayısını al
         try:
-            offset_id = 0
-            for _ in range(20):
-                if offset_id == 0:
-                    messages = bot.get_chat_history(chat_id, limit=50)
-                else:
-                    messages = bot.get_chat_history(chat_id, limit=50, offset_id=offset_id)
-                
-                if not messages:
+            total_members = bot.get_chat_members_count(chat_id)
+            print(f"📊 Toplam üye sayısı: {total_members}")
+            
+            # Her üyeyi tek tek al
+            offset = 0
+            limit = 100
+            
+            while offset < total_members:
+                members = bot.get_chat_members(chat_id, offset=offset, limit=limit)
+                if not members:
                     break
                 
-                for msg in messages:
-                    if msg.from_user and msg.from_user.id not in users_found:
-                        user = msg.from_user
-                        if not user.is_bot:
-                            db.add_user(user.id, user.username, user.first_name, user.last_name)
-                            users_found.add(user.id)
-                            count += 1
-                            print(f"📌 Üye bulundu: {user.first_name}")
-                    
-                    offset_id = msg.message_id
-                    
+                for member in members:
+                    user = member.user
+                    if not user.is_bot and user.id not in users_found:
+                        db.add_user_manual(user.id, user.username, user.first_name, user.last_name)
+                        users_found.add(user.id)
+                        count += 1
+                        print(f"📌 Üye eklendi: {user.first_name}")
+                
+                offset += limit
+                
         except Exception as e:
-            print(f"⚠️ Mesaj tarama hatası: {e}")
+            print(f"⚠️ Üye listesi alınırken hata: {e}")
+            print("📌 Bot admin yetkisinde ve grup 50-60 kişi olmalı")
         
         print(f"✅ Toplam {count} üye eklendi")
         return count
@@ -442,7 +444,7 @@ def handle_new_member(message):
                 bot.reply_to(message, f"✅ {count} ئەندام هاتنە زیادکرن")
                 print(f"✅ Bot gruba eklendi, {count} üye tarandı!")
             else:
-                db.add_user(new_member.id, new_member.username, new_member.first_name, new_member.last_name)
+                db.add_user_manual(new_member.id, new_member.username, new_member.first_name, new_member.last_name)
                 print(f"✅ Yeni üye: {new_member.first_name}")
     except Exception as e:
         print(f"❌ new_member hatası: {e}")
