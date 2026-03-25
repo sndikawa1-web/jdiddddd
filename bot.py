@@ -1,4 +1,4 @@
-# bot.py - ANA BOT DOSYASI (TÜM ÜYELERİ TANIR)
+# bot.py - ANA BOT DOSYASI
 
 import telebot
 import os
@@ -12,21 +12,11 @@ from config import BOT_TOKEN, ALLOWED_GROUP_ID, IRAQ_TIMEZONE
 from database import Database
 from scheduler import start_scheduler
 
-# ============================================
-# BOT'U BAŞLAT
-# ============================================
 bot = telebot.TeleBot(BOT_TOKEN)
 db = Database()
-
-# Admin cache (adminleri hafızada tut)
 admin_cache = set()
 
-# ============================================
-# BADINI DİL DOSYASI (Sözlük)
-# ============================================
 class BadiniTranslations:
-    """Badini dilindeki tüm mesajlar burada"""
-    
     @staticmethod
     def test_report(is_active, total_users, users_with_negatives, last_check, db_status, notified_count):
         return f"""📊 **راپورا بوتی**
@@ -95,9 +85,6 @@ class BadiniTranslations:
     def only_group():
         return "🚫 ئەڤ بوتە تنێ د گروپێ تایبەت دا کار دکت"
 
-# ============================================
-# YARDIMCI FONKSİYONLAR
-# ============================================
 translations = BadiniTranslations()
 
 def is_allowed_group(message):
@@ -140,38 +127,57 @@ def clean_bio(bio):
         return "🚫 Bio yok"
     return bio
 
-# ============================================
-# TÜM ÜYELERİ TARAMA FONKSİYONU
-# ============================================
 def sync_all_members(chat_id):
-    """Gruptaki tüm üyeleri veritabanına ekle"""
+    """Gruptaki tüm üyeleri mesaj geçmişinden tarayarak ekle"""
     print("🔄 Tüm üyeler taranıyor...")
     count = 0
+    users_found = set()
     
     try:
-        # Telegram API ile tüm üyeleri almak sınırlı
-        # Bu yüzden son 1000 mesajı tarayarak üyeleri bulalım
-        # Alternatif: get_chat_administrators ve get_chat_members_count kullan
-        
-        # Önce adminleri ekle
+        # Adminleri ekle
         admins = bot.get_chat_administrators(chat_id)
         for admin in admins:
             user = admin.user
-            db.add_user(user.id, user.username, user.first_name, user.last_name)
-            count += 1
+            if not user.is_bot:
+                db.add_user(user.id, user.username, user.first_name, user.last_name)
+                users_found.add(user.id)
+                count += 1
+                print(f"✅ Admin eklendi: {user.first_name}")
         
-        print(f"✅ {count} üye eklendi")
+        # Son 500 mesajı tara
+        try:
+            offset_id = 0
+            for _ in range(20):
+                if offset_id == 0:
+                    messages = bot.get_chat_history(chat_id, limit=50)
+                else:
+                    messages = bot.get_chat_history(chat_id, limit=50, offset_id=offset_id)
+                
+                if not messages:
+                    break
+                
+                for msg in messages:
+                    if msg.from_user and msg.from_user.id not in users_found:
+                        user = msg.from_user
+                        if not user.is_bot:
+                            db.add_user(user.id, user.username, user.first_name, user.last_name)
+                            users_found.add(user.id)
+                            count += 1
+                            print(f"📌 Üye bulundu: {user.first_name}")
+                    
+                    offset_id = msg.message_id
+                    
+        except Exception as e:
+            print(f"⚠️ Mesaj tarama hatası: {e}")
+        
+        print(f"✅ Toplam {count} üye eklendi")
         return count
         
     except Exception as e:
         print(f"❌ Üye tarama hatası: {e}")
         return 0
 
-# ============================================
-# 24 SAAT KONTROL FONKSİYONU
-# ============================================
 def check_inactive_users():
-    """24 saat konuşmayanları kontrol et ve etiketle"""
     print("🔍 24 saat konuşmayanlar kontrol ediliyor...")
     
     try:
@@ -183,9 +189,8 @@ def check_inactive_users():
             if user_id == bot.get_me().id:
                 continue
             
-            # Hiç mesaj göndermemiş olanlar için
             if last_date is None:
-                print(f"📌 Yeni kullanıcı hiç konuşmamış: {user_id}")
+                print(f"📌 Hiç konuşmamış: {user_id}")
                 db.add_negative_point(user_id)
                 new_points = db.get_user_negative_points(user_id)
             else:
@@ -214,9 +219,7 @@ def check_inactive_users():
         print(f"❌ 24 saat kontrol hatası: {e}")
 
 def send_daily_report():
-    """Günlük rapor gönder (Irak saati 12:00)"""
     print("📊 Günlük rapor gönderiliyor...")
-    
     try:
         top_users = db.get_daily_top_users(5)
         report_msg = translations.daily_top_report(top_users)
@@ -224,10 +227,6 @@ def send_daily_report():
         print("✅ Günlük rapor gönderildi")
     except Exception as e:
         print(f"❌ Günlük rapor hatası: {e}")
-
-# ============================================
-# TELEGRAM KOMUTLARI
-# ============================================
 
 @bot.message_handler(commands=['start'])
 def cmd_start(message):
@@ -339,7 +338,6 @@ def cmd_nadmin(message):
 
 @bot.message_handler(commands=['sync'])
 def cmd_sync(message):
-    """Tüm üyeleri veritabanına ekle (sadece admin)"""
     try:
         if not is_allowed_group(message):
             bot.reply_to(message, translations.error_message("wrong_group"))
@@ -349,19 +347,13 @@ def cmd_sync(message):
             return
         
         bot.reply_to(message, "🔄 سنکرونیزە کرنا ئەندامان دەست پێ کر...")
-        
         count = sync_all_members(message.chat.id)
-        
         bot.reply_to(message, f"✅ {count} ئەندام هاتنە زیادکرن")
-        print(f"✅ Sync tamamlandı: {count} üye eklendi")
         
     except Exception as e:
         print(f"❌ sync hatası: {e}")
         bot.reply_to(message, translations.error_message("general"))
 
-# ============================================
-# İD KOMUTU
-# ============================================
 @bot.message_handler(func=lambda message: message.text and message.text.lower() in ['id', 'ايدي', 'ایدی', 'ıd'])
 def cmd_id(message):
     try:
@@ -417,9 +409,6 @@ def cmd_id(message):
     except Exception as e:
         print(f"❌ id komutu hatası: {e}")
 
-# ============================================
-# MESAJ İŞLEYİCİ
-# ============================================
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def handle_messages(message):
     try:
@@ -438,9 +427,6 @@ def handle_messages(message):
     except Exception as e:
         print(f"❌ handle_messages hatası: {e}")
 
-# ============================================
-# GRUP OLAYLARI
-# ============================================
 @bot.message_handler(content_types=['new_chat_members'])
 def handle_new_member(message):
     try:
@@ -452,9 +438,9 @@ def handle_new_member(message):
                 bot.reply_to(message, "🔰 بوت داتایێن گروپی مە. بۆ هاریکاریێ چێکی /help")
                 update_admin_cache(message.chat.id)
                 start_scheduler(check_inactive_users, send_daily_report, ALLOWED_GROUP_ID)
-                # Bot eklendiğinde tüm üyeleri tara
-                sync_all_members(message.chat.id)
-                print("✅ Bot gruba eklendi ve tüm üyeler tarandı!")
+                count = sync_all_members(message.chat.id)
+                bot.reply_to(message, f"✅ {count} ئەندام هاتنە زیادکرن")
+                print(f"✅ Bot gruba eklendi, {count} üye tarandı!")
             else:
                 db.add_user(new_member.id, new_member.username, new_member.first_name, new_member.last_name)
                 print(f"✅ Yeni üye: {new_member.first_name}")
@@ -474,9 +460,6 @@ def handle_left_member(message):
     except Exception as e:
         print(f"❌ left_member hatası: {e}")
 
-# ============================================
-# BOTU BAŞLAT
-# ============================================
 if __name__ == "__main__":
     print("=" * 50)
     print("🤖 BOT BAŞLATILIYOR...")
