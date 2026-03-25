@@ -191,15 +191,23 @@ def check_inactive_users():
             if user_id == bot.get_me().id:
                 continue
             
-            # Son 24 saat içinde zaten etiketlendiyse tekrar etiketleme
-            if last_notified:
-                last_notified_time = datetime.datetime.fromisoformat(str(last_notified))
-                if datetime.datetime.now() - last_notified_time < datetime.timedelta(hours=24):
-                    continue
-            
-            # Eksi puan ekle
-            db.add_negative_point(user_id)
-            new_points = db.get_user_negative_points(user_id)
+            # Hiç mesaj göndermemiş olanlar için özel işlem
+            if last_date is None:
+                print(f"📌 Yeni kullanıcı hiç konuşmamış: {user_id}")
+                db.add_negative_point(user_id)
+                new_points = db.get_user_negative_points(user_id)
+            else:
+                # Son 24 saat içinde zaten etiketlendiyse tekrar etiketleme
+                if last_notified:
+                    try:
+                        last_notified_time = datetime.datetime.fromisoformat(str(last_notified))
+                        if datetime.datetime.now() - last_notified_time < datetime.timedelta(hours=24):
+                            continue
+                    except:
+                        pass
+                
+                db.add_negative_point(user_id)
+                new_points = db.get_user_negative_points(user_id)
             
             # Etiketle
             mention = get_mention_html(user_id, username, first_name)
@@ -351,7 +359,11 @@ def cmd_24h(message):
         for user in inactive_users:
             user_id, username, first_name, last_date, points, _ = user
             mention = get_mention_html(user_id, username, first_name)
-            msg += f"• {mention} - ینزار: {points}\n"
+            if last_date is None:
+                last_date_str = "هیچ نامەیەک نەنارد"
+            else:
+                last_date_str = str(last_date)[:16]
+            msg += f"• {mention} - ینزار: {points} (دوایین نامە: {last_date_str})\n"
         
         bot.reply_to(message, msg, parse_mode='HTML')
         
@@ -426,14 +438,19 @@ def cmd_id(message):
         # Kullanıcı adı
         user_text = f"@{username}" if username else "❌"
         
+        # Eksi puanı varsa göster
+        negative_text = f"\n𖤓 𝐞𝐱𝐢 {negative_points}" if negative_points > 0 else ""
+        
         # Mesajı oluştur
         caption = f"𖤓 𝐧𝐚𝐦𝐞 {name_mention}\n"
         caption += f"𖤓 𝐮𝐬𝐞𝐫 {user_text}\n"
         caption += f"𖤓 𝐦𝐞𝐬𝐬𝐚𝐠𝐞 {total_messages}\n"
         caption += f"𖤓 𝐥𝐞𝐧𝐠 {user_lang}\n"
         caption += f"𖤓 𝐭𝐢𝐦𝐞 {joined_date_str}\n"
-        caption += f"𖤓 𝐢𝐝 <code>{user_id}</code>\n"
-        caption += f"𖤓 𝐛𝐢𝐨 {bio}"
+        caption += f"𖤓 𝐢𝐝 <code>{user_id}</code>"
+        if negative_points > 0:
+            caption += f"\n𖤓 𝐞𝐱𝐢 {negative_points}"
+        caption += f"\n𖤓 𝐛𝐢𝐨 {bio}"
         
         # Profil fotoğrafını gönder
         try:
@@ -471,11 +488,6 @@ def handle_messages(message):
         db.add_user(user.id, user.username, user.first_name, user.last_name)
         new_points = db.update_user_activity(user.id)
         
-        # Eksi sıfırlandıysa bildirim (isteğe bağlı)
-        # if old_points > 0 and new_points == 0:
-        #     mention = get_mention_html(user.id, user.username, user.first_name)
-        #     bot.send_message(message.chat.id, f"{mention} ینزارێن تە هاتن سڤرکرن!", parse_mode='HTML')
-        
     except Exception as e:
         print(f"❌ handle_messages hatası: {e}")
 
@@ -498,9 +510,9 @@ def handle_new_member(message):
                 start_scheduler(check_inactive_users, send_daily_report, ALLOWED_GROUP_ID)
                 print("✅ Bot gruba eklendi!")
             else:
-                # Normal üye eklendi
+                # Normal üye eklendi - last_message_date NULL olarak eklenir
                 db.add_user(new_member.id, new_member.username, new_member.first_name, new_member.last_name)
-                print(f"✅ Yeni üye: {new_member.first_name}")
+                print(f"✅ Yeni üye: {new_member.first_name} (hiç konuşmadı)")
     except Exception as e:
         print(f"❌ new_member hatası: {e}")
 
@@ -526,7 +538,7 @@ if __name__ == "__main__":
     print("=" * 50)
     print("🤖 BOT BAŞLATILIYOR...")
     print("=" * 50)
-    print(f"🔑 Token: {BOT_TOKEN[:10]}...")
+    print(f"🔑 Token: {BOT_TOKEN[:10] if BOT_TOKEN else 'YOK'}...")
     print(f"👥 Grup ID: {ALLOWED_GROUP_ID}")
     print("-" * 50)
     
@@ -546,7 +558,7 @@ if __name__ == "__main__":
     print("   • /r (eksi puanı olanlar)")
     print("   • /24h (admin)")
     print("   • /nadmin (admin)")
-    print("   • id, ايدي, ایدی (slashsiz)")
+    print("   • id, ايدي, ایدی, ıd (slashsiz)")
     print("-" * 50)
     print("🚀 Polling başlıyor...")
     print("=" * 50)
