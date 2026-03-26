@@ -411,23 +411,37 @@ def cmd_id(message):
     except Exception as e:
         print(f"❌ id komutu hatası: {e}")
 
+# ============================================
+# MESAJ İŞLEYİCİ - GÜNCELLENMİŞ (DETAYLI LOGLAMA)
+# ============================================
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def handle_messages(message):
+    """Normal mesajları işle - DETAYLI LOGLAMA"""
     try:
+        print(f"📩 Mesaj alındı: {message.from_user.first_name} -> {message.text[:50] if message.text else 'EMOJI'}")
+        
         if not is_allowed_group(message):
+            print(f"❌ İzin verilmeyen grup: {message.chat.id} (beklenen: {ALLOWED_GROUP_ID})")
             return
         
         if message.text and message.text.startswith('/'):
             command = message.text.split()[0].lower()
             if command in ['/test', '/r', '/24h', '/nadmin', '/help', '/start', '/sync']:
+                print(f"⏭️ Komut atlandi: {command}")
                 return
         
         user = message.from_user
+        print(f"✅ Kullanici isleniyor: ID={user.id}, İsim={user.first_name}, Kadi={user.username}")
+        
         db.add_user(user.id, user.username, user.first_name, user.last_name)
-        db.update_user_activity(user.id)
+        new_points = db.update_user_activity(user.id)
+        
+        print(f"✅ Aktivite guncellendi! Yeni eksi puani: {new_points}")
         
     except Exception as e:
-        print(f"❌ handle_messages hatası: {e}")
+        print(f"❌ handle_messages hatasi: {e}")
+        import traceback
+        traceback.print_exc()
 
 @bot.message_handler(content_types=['new_chat_members'])
 def handle_new_member(message):
